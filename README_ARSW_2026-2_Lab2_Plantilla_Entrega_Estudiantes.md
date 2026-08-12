@@ -231,9 +231,10 @@ Documente cada región crítica identificada.
 
 | Clase | Región crítica | Invariante protegida | Mecanismo usado | ¿Por qué ese tamaño? |
 |---|---|---|---|---|
-| | | | | |
-| | | | | |
-| | | | | |
+|PackageQueue |Todo el cuerpo de takeNext | I1 (cada paquete se procesa a lo sumo una vez) |synchronized(lock) con lock privado |El Check-then-act deben ir en una sola operación lógicasi no, otro robot se cuela y agarra el mismo. Es rápido, no frena nada ademas el lock propio evita que algo externo se meta en el bloqueo |
+|DeliveryRegistry |Bloque de register() que lee nextPosition, lo incrementa y hace deliveries.add() | I2 (posiciones de llegada únicas) |ynchronized(lock) con lock privado propio de la clase | Agrupa lectura+incremento+inserción en una operación atómica. El Lock privado evita interferencia externa.|
+| WarehouseStatistics|Bloque de recordProcessed() que actualiza processedParcels y totalProcessingMillis |I3 (contador de procesados == número de registros) |synchronized(lock) con lock privado propio de la clase |Solo suma dos números, no espera nada, así que el candado se libera casi al instante. Se usa lock propio para que nada externo interfiera. |
+|SimulationControl|awaitIfPaused() (espera) + pause()/resume() (cambio de bandera y señal)|I4 (snapshot/reporte consistente durante pausa)|Monitor con candado privado: robots pausados esperan con wait(), resume() los despierta con notifyAll()|Es factible igual: wait()/notify() deben invocarse sobre el mismo objeto que se usa como candado, un lock privado sirve exactamente igual que this, solo que encapsulado.|
 
 ---
 

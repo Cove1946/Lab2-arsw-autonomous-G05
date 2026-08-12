@@ -11,11 +11,11 @@
 
 ## 0. Información del equipo
 
-| Integrante | Código / ID | GitHub |
-|---|---|---|
-| | | |
-| | | |
-| | | |
+| Integrante                         | Código / ID | GitHub   |
+|------------------------------------|-------------|----------|
+| Cristian Ronaldo Guerrero Buitrago | 1000101455  | Cove1946 |
+|                                    |             |          |
+|                                    |             |          |
 
 **Repositorio:**  
 `PEGAR_AQUÍ_URL_DEL_REPOSITORIO`
@@ -39,7 +39,19 @@ mvn -version
 **Evidencia:**
 
 ```text
-PEGAR_AQUÍ_LA_SALIDA
+java -version
+java version "21.0.6" 2025-01-21 LTS
+Java(TM) SE Runtime Environment (build 21.0.6+8-LTS-188)
+Java HotSpot(TM) 64-Bit Server VM (build 21.0.6+8-LTS-188, mixed mode, sharing)
+```
+
+```text
+mvn -v version
+Apache Maven 3.9.12 (848fbb4bf2d427b72bdb2471c22fced7ebd9a7a1)
+Maven home: C:\apache-maven-3.9.12
+Java version: 21.0.6, vendor: Oracle Corporation, runtime: C:\Program Files\Java\jdk-21
+Default locale: es_MX, platform encoding: UTF-8
+OS name: "windows 11", version: "10.0", arch: "amd64", family: "windows"
 ```
 
 ---
@@ -60,13 +72,21 @@ java -cp target/classes edu.eci.arsw.warehouse.app.WarehouseMain <robots> <packa
 
 **Configuración utilizada:**
 
-- Robots:
-- Paquetes:
+- Robots: 12
+- Paquetes: 100
 
 **Resultado observado:**
 
 ```text
-PEGAR_AQUÍ_LA_SALIDA_RELEVANTE
+Starting warehouse with 12 robots and 100 parcels...
+
+--- STARTER REPORT (intentionally premature) ---
+Initial parcels : 100
+Pending parcels : 64
+Processed count : 24
+Registry size   : 24
+Current leader  : Robot-07 / parcel 7 / position 1
+----------------------------------------------
 ```
 
 ---

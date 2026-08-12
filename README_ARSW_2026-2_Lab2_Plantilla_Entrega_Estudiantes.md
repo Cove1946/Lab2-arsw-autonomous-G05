@@ -95,13 +95,13 @@ Current leader  : Robot-07 / parcel 7 / position 1
 
 Identifique los objetos y variables compartidas entre múltiples threads.
 
-| Objeto / Clase | Estado mutable compartido | Quién lee | Quién modifica | Riesgo identificado |
-|---|---|---|---|---|
-| `PackageQueue` | | | | |
-| `DeliveryRegistry` | | | | |
-| `WarehouseStatistics` | | | | |
-| `SimulationControl` | | | | |
-| Otro | | | | |
+| Objeto / Clase | Estado mutable compartido                                  | Quién lee                                                                                                                   | Quién modifica                                                           | Riesgo identificado                                                                                                                 |
+|---|------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| `PackageQueue` | pending (ArrayList< Parcel >)                              | takeNext() / pending.isEmpty(), pendingCount()                                                                              | takeNext() / pending.remove(0)                                           | Entre get y remove, otro robot puede leer el mismo indice, donde dos robots pueden procesar el mismo parcel o removerlo de la lista |
+| `DeliveryRegistry` | nextPosition(int), deliveries(ArrayList < DeliveryRecord>) | register() lee nextPosition, snapshot() lee deliveries                                                                      | register() incrementa nextPosition y hace deliveries.add()               | posiciones duplicadas o no contiguas. add concurrente sin sincronizar                                                               |
+| `WarehouseStatistics` | processedParcels(int), totalProcessingMillis(long)         | processedParcels lee processedParcels, totalProcessingMillis lee totalProcessingMillis y recordProcessed se relee asi mismo | recordProcessed es llamado por cada robot cuando se registra una entrega | Hay un incremento atomico y el conteo final puede ser erroneo cuando dos robots terminan casi al tiempo                             |
+| `SimulationControl` | paused(boolean)                                            | awaitIfPaused() y isPaused()                                                                                                          | pause() y resume() cambian el booleano                                   | Los robots pueden quedarse pausados preguntando en bucle si pueden seguir y no puedan dormirse                                      |
+| Otro |                                                            |                                                                                                                             |                                                                          |                                                                                                                                     |
 
 ---
 

@@ -14,7 +14,7 @@
 | Integrante                         | Código / ID | GitHub   |
 |------------------------------------|-------------|----------|
 | Cristian Ronaldo Guerrero Buitrago | 1000101455  | Cove1946 |
-|                                    |             |          |
+| Juan Esteban Tellez Valencia       | 1000098939  | JuanTellez125         |
 |                                    |             |          |
 
 **Repositorio:**  
@@ -209,19 +209,19 @@ Defina las invariantes que su solución debe preservar.
 
 ## I1
 
-`________________________________________________________________________`
+`Cada paquete se procesa a lo sumo una vez: sin ella hay entregas duplicadas y perdidas de paquetes`
 
 ## I2
 
-`________________________________________________________________________`
+`Las posiciones de llegada son única: Evita orden de llegada duplicado y hace que sea observable`
 
 ## I3
 
-`________________________________________________________________________`
+`El contador de procesados debe coincidir con el numero de registros`
 
 ## I4 — opcional
 
-`________________________________________________________________________`
+`Para reportar la simulacion como completa, no deben quedar pendientes: sin ella el reporte final puede tener informacion incompleta`
 
 ---
 

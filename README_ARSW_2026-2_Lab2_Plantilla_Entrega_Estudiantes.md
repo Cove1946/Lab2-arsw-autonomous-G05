@@ -92,21 +92,28 @@ Documente **mínimo tres** comportamientos incorrectos o potencialmente incorrec
 ## Race Condition #1
 
 **Clase / método involucrado:**  
-`________________________________________`
+`PackageQueue.takeNext()`
 
 **Estado compartido involucrado:**  
-`________________________________________`
+`pending: List<Parcel>`
 
 **Comportamiento observado:**  
-`________________________________________`
+`Con 500 parcelas iniciales y pending=0 al final, el registro de entregas solo tiene 490 entradas (10 parcelas nunca 
+quedaron registradas) y uniqueParcels(457) < registry(490), es decir, 33 IDs de parcela quedaron duplicados.`
 
 **¿Por qué ocurre?**  
-`________________________________________`
+`Lo que pasa aquí es un caso de check-then-act. Dos robots revisan casi al mismo tiempo si la lista de parcelas 
+pendientes está vacía y ambos ven la misma parcela como la primera de la lista. Como hay un Thread.yield(), se aumenta 
+la posibilidad de que los dos intenten retirarla al mismo tiempo. El primero elimina esa parcela, pero cuando el segundo
+hace el remove(0), la lista ya cambió de posición y termina eliminando la siguiente parcela. Al final, una parcela queda
+registrada como si hubiera sido procesada dos veces y otra se elimina de la lista sin que ningún robot la procese.`
 
 **Evidencia de ejecución:**
 
 ```text
-PEGAR_AQUÍ_LA_EVIDENCIA
+Comando: java -cp target/classes edu.eci.arsw.warehouse.verification.RaceConditionProbe 50 32 500
+Run 01 -> RACE/ANOMALY | pending=0, processedCounter=484, registry=490, uniqueParcels=457, uniquePositions=452, 
+positionsContiguous=false
 ```
 
 ---
@@ -114,21 +121,31 @@ PEGAR_AQUÍ_LA_EVIDENCIA
 ## Race Condition #2
 
 **Clase / método involucrado:**  
-`________________________________________`
+`DeliveryRegistry.register()`
 
 **Estado compartido involucrado:**  
-`________________________________________`
+`deliveries: List<DeliveryRecord> (y nextPosition: int)`
 
 **Comportamiento observado:**  
-`________________________________________`
+`En algunas ejecuciones, uno de los robots terminaba de forma inesperada porque ocurría una excepción que no era 
+capturada. En otras corridas, en cambio, el propio robot detectaba el problema y mostraba mensajes como Queue anomaly: 
+IndexOutOfBoundsException, lo que indicaba que se había producido un error al acceder a la cola compartida.`
 
 **¿Por qué ocurre?**  
-`________________________________________`
+``ArrayList` no es seguro para trabajar con varios hilos al mismo tiempo. En este caso, varios robots pueden ejecutar 
+`deliveries.add(...)` simultáneamente dentro de `register()` sin usar `synchronized`. Esto puede hacer que la estructura
+interna del `ArrayList` quede inconsistente y provoque una excepción como `ArrayIndexOutOfBoundsException`. Como la 
+excepción ocurre en `register()`, queda fuera del `try/catch` que `WarehouseRobot.run()` utiliza únicamente para 
+`packageQueue.takeNext()`. Por lo tanto, el hilo del robot termina y deja de funcionar.`
 
 **Evidencia de ejecución:**
 
 ```text
-PEGAR_AQUÍ_LA_EVIDENCIA
+Comando: java -cp target/classes edu.eci.arsw.warehouse.verification.RaceConditionProbe 50 32 500
+Exception in thread "warehouse-robot-11" java.lang.ArrayIndexOutOfBoundsException: Index 50 out of bounds for length 49
+        at java.base/java.util.ArrayList.add(ArrayList.java:484)
+        at edu.eci.arsw.warehouse.core.DeliveryRegistry.register(DeliveryRegistry.java:20)
+        at edu.eci.arsw.warehouse.worker.WarehouseRobot.run(WarehouseRobot.java:56)
 ```
 
 ---
@@ -136,21 +153,27 @@ PEGAR_AQUÍ_LA_EVIDENCIA
 ## Race Condition #3
 
 **Clase / método involucrado:**  
-`________________________________________`
+`WarehouseStatistics.recordProcessed()`
 
 **Estado compartido involucrado:**  
-`________________________________________`
+`processedParcels: int`
 
 **Comportamiento observado:**  
-`________________________________________`
+`Con solo 500 parcelas creadas en total, la corrida terminó con processedCounter=501 y registry=506 — ambos contadores 
+superan el número físico de parcelas que existieron, algo imposible en un sistema correcto.`
 
 **¿Por qué ocurre?**  
-`________________________________________`
+``recordProcessed()` no realiza el incremento de forma atómica, ya que primero guarda el valor de `processedParcels`, 
+luego hace `Thread.yield()` y finalmente suma 1. Si dos robots ejecutan este método al mismo tiempo, ambos pueden leer 
+el mismo valor antes de actualizarlo, haciendo que uno de los incrementos se pierda. Por otro lado, si una parcela se 
+procesa dos veces debido a la Race Condition #1, el contador también puede terminar siendo mayor de lo esperado porque 
+la misma parcela se cuenta más de una vez.`
 
 **Evidencia de ejecución:**
 
 ```text
-PEGAR_AQUÍ_LA_EVIDENCIA
+Comando: java -cp target/classes edu.eci.arsw.warehouse.verification.RaceConditionProbe 50 32 500
+Run 44 -> RACE/ANOMALY | pending=0, processedCounter=501, registry=506, uniqueParcels=486, uniquePositions=492, positionsContiguous=false 
 ```
 
 ---
@@ -160,16 +183,16 @@ PEGAR_AQUÍ_LA_EVIDENCIA
 Seleccione una de las condiciones de carrera anteriores y represente un interleaving posible.
 
 **Condición seleccionada:**  
-`________________________________________`
+`PackageQueue.takeNext() — dos robots "ven" la misma caja como la primera de la fila antes de que ninguno la haya retirado.`
 
-| Paso | Thread A | Thread B | Estado compartido |
-|---:|---|---|---|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
-| 4 | | | |
-| 5 | | | |
-| 6 | | | |
+| Paso | Thread A                                                                               | Thread B                                                                               | Estado compartido |
+|---:|----------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|---|
+| 1 | Mira la fila y ve que la primera caja es la Caja 1 (pending.isEmpty() → false)         | -                                                                                      | [Caja1, Caja2, Caja3, ...] |
+| 2 | -                                                                                      | Mira la fila y también ve que la primera es la Caja 1  (pending.isEmpty() → false)     | [Caja1, Caja2, Caja3, ...] |
+| 3 | Decide "me llevo la Caja 1", pero aún no la retira (selected = pending.get(0) → Caja1) | -                                                                                      | [Caja1, Caja2, Caja3, ...] |
+| 4 | -                                                                                      | Decide "me llevo la Caja 1", pero aún no la retira (selected = pending.get(0) → Caja1) | [Caja1, Caja2, Caja3, ...] |
+|5| Se distrae un instante y cede su turno (Thread.yield())                                | -                                                                                      | [Caja1, Caja2, Caja3, ...] |
+|6| -                                                                                      | Quita la primera caja de la fila → se lleva la Caja 1 real (pending.remove(0))         | [Caja2, Caja3, ...]        |
 
 ### Explicación
 
@@ -177,9 +200,12 @@ Seleccione una de las condiciones de carrera anteriores y represente un interlea
 
 **Respuesta:**
 
-`________________________________________________________________________`
+`Porque entre que un robot decide cuál caja le toca (pasos 1–4) y el momento en que realmente la retira de la fila 
+(pasos 5–6), pasa un instante en el que el otro robot puede alcanzar a modificar la fila. Si el sistema operativo 
+hubiera dado los turnos en otro orden — por ejemplo, si A hubiera completado su remove(0) antes de que B mirara la fila 
+— no habría ningún error. El resultado depende entonces del orden exacto en que el procesador reparte el tiempo entre 
+los hilos, orden que cambia en cada ejecución y que el código no controla ni verifica.`
 
-`________________________________________________________________________`
 
 ---
 

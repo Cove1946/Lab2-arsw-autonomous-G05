@@ -19,16 +19,14 @@ public final class WarehouseMain {
         System.out.printf("Starting warehouse with %d robots and %d parcels...%n", robots, parcels);
         simulation.start();
 
-        // Intentionally wrong architecture-level coordination:
-        // the application reports a "final" state before workers have finished.
-        Thread.sleep(60);
-        System.out.println("\n--- STARTER REPORT (intentionally premature) ---");
-        printSnapshot(simulation.snapshot());
-        System.out.println("----------------------------------------------\n");
+        // The coordinator blocks until every robot thread has terminated (Thread.join()).
+        // join() also establishes a happens-before edge, so the snapshot below observes
+        // the final values written by the workers instead of stale cached ones.
+        simulation.awaitCompletion();
 
-        // The JVM stays alive because robot threads are non-daemon threads.
-        // TODO LAB 2: coordinate completion explicitly with join() and print exactly one
-        // consistent final report after all workers terminate.
+        System.out.println("\n--- FINAL REPORT ---");
+        printSnapshot(simulation.snapshot());
+        System.out.println("--------------------\n");
     }
 
     static void printSnapshot(WarehouseSnapshot snapshot) {

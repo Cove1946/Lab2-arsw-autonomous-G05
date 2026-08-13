@@ -280,13 +280,13 @@ Marque y explique cuáles evaluaron:
 ### Alternativa 1
 
 **Descripción:**  
-`AtomicInteger para reemplazar los contadores de WarehouseStatistics (processedParcels, totalProcessingMillis) y nextPosition en DeliveryRegistry, usando incrementAndGet() en vez de lock explícito.`
+`AtomicInteger/AtomicLong para reemplazar los contadores de WarehouseStatistics (processedParcels es int, totalProcessingMillis es long) y nextPosition en DeliveryRegistry, usando incrementAndGet()/addAndGet() en vez de lock explícito.`
 
 **Ventaja:**  
-`Sin bloqueo explícito (lock-free, basado en CAS), más rápido bajo alta contención para un solo valor aislado; código corto.`
+`Sin bloqueo explícito (lock-free, basado en CAS): evita dormir el hilo y el cambio de contexto bajo contención baja o moderada, para un solo valor aislado; código corto.`
 
 **Desventaja:**  
-`Solo protege una variable a la vez. DeliveryRegistry necesita que el incremento de nextPosition y el add() a la lista queden atómicos juntos — eso ya no es una sola variable, así que un Atomic no alcanza (tocaría combinarlo con otro mecanismo igual).`
+`Solo protege una variable a la vez, y las invariantes de este laboratorio son compuestas. DeliveryRegistry necesita que el incremento de nextPosition y el add() a la lista queden atómicos juntos — eso ya no es una sola variable, así que un Atomic no alcanza (tocaría combinarlo con otro mecanismo igual). Lo mismo pasa dentro de WarehouseStatistics: processedParcels y totalProcessingMillis como dos atómicos independientes son atómicos cada uno, pero no entre sí, así que no existe ningún instante garantizado en el que ambos correspondan al mismo conjunto de paquetes — el snapshot de pausa podría leer el contador ya incrementado y los milisegundos todavía sin sumar. Dos operaciones atómicas seguidas no forman una operación atómica. Además, bajo contención alta el CAS degrada: los hilos reintentan en bucle y la línea de caché rebota entre núcleos, quemando CPU sin avanzar.`
 
 ### Alternativa 2
 

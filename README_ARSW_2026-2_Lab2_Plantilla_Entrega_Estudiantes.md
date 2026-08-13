@@ -244,44 +244,44 @@ Documente cada región crítica identificada.
 
 Marque y explique cuáles evaluaron:
 
-- [ ] `synchronized`
-- [ ] `AtomicInteger`
-- [ ] Colecciones concurrentes
-- [ ] `Lock`
-- [ ] `wait()` / `notifyAll()`
+- [x] `synchronized`
+- [x] `AtomicInteger`
+- [ ] `Colecciones concurrentes`
+- [x] `Lock`
+- [x] `wait()` / `notifyAll()`
 - [ ] Otra: `________________________`
 
 ### Alternativa 1
 
 **Descripción:**  
-`________________________________________________________________________`
+`AtomicInteger para reemplazar los contadores de WarehouseStatistics (processedParcels, totalProcessingMillis) y nextPosition en DeliveryRegistry, usando incrementAndGet() en vez de lock explícito.`
 
 **Ventaja:**  
-`________________________________________________________________________`
+`Sin bloqueo explícito (lock-free, basado en CAS), más rápido bajo alta contención para un solo valor aislado; código corto.`
 
 **Desventaja:**  
-`________________________________________________________________________`
+`Solo protege una variable a la vez. DeliveryRegistry necesita que el incremento de nextPosition y el add() a la lista queden atómicos juntos — eso ya no es una sola variable, así que un Atomic no alcanza (tocaría combinarlo con otro mecanismo igual).`
 
 ### Alternativa 2
 
 **Descripción:**  
-`________________________________________________________________________`
+`Lock explícito (ReentrantLock) en vez de synchronized, adquiriendo/liberando manualmente con lock()/unlock() en try-finally.`
 
 **Ventaja:**  
-`________________________________________________________________________`
+`Más flexible (tryLock con timeout, lock interrumpible, Condition múltiples), útil si se necesitara evitar bloqueo indefinido.`
 
 **Desventaja:**  
-`________________________________________________________________________`
+`Más código, riesgo de olvidar unlock() si no se usa try-finally correcto; para este caso (regiones cortas, sin necesidad de timeout ni condiciones múltiples) es complejidad innecesaria — synchronized ya resuelve exactamente lo mismo con menos riesgo de error.`
 
 ### Decisión final
 
 **Mecanismo seleccionado:**  
-`________________________________________`
+`synchronized con lock privado por clase (PackageQueue, DeliveryRegistry, WarehouseStatistics) + monitor synchronized/wait()/notifyAll() en SimulationControl para pause/resume.`
 
 **Justificación:**  
-`________________________________________________________________________`
+`Cada región crítica identificada (I1, I2, I3) es corta, sin I/O ni espera, y agrupa 2-3 operaciones que deben ser atómicas entre sí — exactamente el caso de uso simple que synchronized resuelve sin código extra. AtomicInteger no alcanza porque DeliveryRegistry necesita atomicidad entre dos operaciones (incrementar posición + insertar en lista), no solo una variable. Lock explícito no aporta nada aquí porque no necesitamos timeout, interrupción ni múltiples condiciones — solo agregaría complejidad y riesgo de fugas de lock.`
 
-`________________________________________________________________________`
+`Para pausa/reanudación (I4), wait()/notifyAll() es obligatorio porque es el único mecanismo que permite dormir el hilo sin busy waiting y despertar a todos de una sola señal — ni synchronized solo ni Atomic resuelven coordinación de espera entre hilos.`
 
 ---
 

@@ -316,19 +316,34 @@ Marque y explique cuáles evaluaron:
 Explique cómo garantizaron que el programa solamente genera el reporte final cuando todos los robots han terminado.
 
 **Mecanismo utilizado:**  
-`________________________________________`
+``Thread.join() sobre cada robot, encapsulado en WarehouseSimulation.awaitCompletion(). El hilo main actúa como coordinador y solo imprime el reporte después de que los N join() retornaron.`
+
+**Cambio realizado en el código:**
+
+```java
+// WarehouseMain.main() — antes
+Thread.sleep(60);
+System.out.println("\n--- STARTER REPORT (intentionally premature) ---");
+printSnapshot(simulation.snapshot());
+
+// WarehouseMain.main() — después
+simulation.awaitCompletion();
+System.out.println("\n--- FINAL REPORT ---");
+printSnapshot(simulation.snapshot());
+```
+`
 
 **Explicación:**  
-`________________________________________________________________________`
+`start() crea y arranca los N robots sin esperar a ninguno, así que todos corren concurrentemente. Luego awaitCompletion() recorre la lista y llama robot.join(), que bloquea al hilo llamante hasta que el hilo objetivo termina. El orden del bucle no afecta la correctitud: si el robot 1 es el más lento, join() sobre él bloquea mientras los demás ya terminaron, de modo que el tiempo de espera total es el máximo de los tiempos individuales y no la suma. Si un robot ya terminó, su join() retorna de inmediato: a diferencia de notify(), join() consulta el estado de terminación del hilo y no una señal transitoria.`
 
-`________________________________________________________________________`
+`Además, el reporte se imprime una sola vez, en el hilo main y después del último join; ningún robot imprime. awaitCompletion() declara throws InterruptedException y no la traga: si interrumpen al coordinador, la excepción se propaga en vez de continuar reportando datos incompletos.`
 
 ### Pregunta
 
 ¿Por qué usar `Thread.sleep(...)` no sería una solución correcta para esperar la finalización de todos los workers?
 
 **Respuesta:**  
-`________________________________________________________________________`
+`Porque sleep() se basa en una estimación del tiempo y no en comprobar si realmente se terminó el trabajo. Es decir, el programa simplemente espera una cantidad determinada de milisegundos y supone que durante ese tiempo las tareas habrán terminado, pero no verifica su estado real. El tiempo que necesitan las tareas puede cambiar dependiendo de la carga de la máquina, la cantidad de núcleos disponibles, la gestión automática de memoria de Java, la forma en que el sistema operativo distribuye el tiempo de procesamiento entre los programas y las variaciones aleatorias en la duración de process().`
 
 ---
 

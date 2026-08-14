@@ -354,26 +354,29 @@ printSnapshot(simulation.snapshot());
 Explique por qué el busy waiting de la implementación inicial no es adecuado.
 
 **Respuesta:**  
-`________________________________________________________________________`
-
-`________________________________________________________________________`
-
+`No es la mejor implementación ya que el busy waiting mantiene el hilo activo en un bucle preguntando si la bandera
+cambió, desperdiciando CPU en un loop que no hace trabajo útil. Con N robots pausados simultáneamente, N hilos quedan
+compitiendo por núcleos sin avanzar, degradando el rendimiento del resto del sistema, incluido el hilo que debe llamar
+resume(), que también compite por CPU contra los spinners y puede verse retrasado. A más robots pausados, peor escala
+el problema. Además, el hilo detecta el cambio de estado solo cuando el sistema operativo vuelve a asignarle tiempo de
+procesador para revisar la bandera de nuevo; no hay ninguna notificación directa que le avise al instante.
+`
 ---
 
 ## 9.2 Solución implementada
 
 Explique cómo implementaron:
 
-- `pause()`
-- espera de los workers
-- `resume()`
-- despertar coordinado de los workers
-
 **Respuesta:**  
-`________________________________________________________________________`
+- `Reemplazamos la bandera volatile con busy waiting por un monitor propio: un lock privado junto con synchronized/wait()/notifyAll(). pause() 
+entra a synchronized(lock) y pone paused=true, sin necesidad de notificar a nadie, ya que los robots activos se encargan de chequear la bandera 
+solos en su próxima vuelta. La espera queda en awaitIfPaused(), que cada robot llama en cada iteración de su loop: entra a synchronized(lock) y, 
+si paused es true, hace lock.wait() dentro de un while, lo cual libera el lock y duerme el hilo de verdad, sin gastar CPU, hasta que alguien lo notifique.`
 
-`________________________________________________________________________`
-
+- `resume(), por su parte, entra a synchronized(lock), pone paused=false y llama lock.notifyAll() dentro de la misma sección crítica, de modo que el cambio 
+de bandera y el aviso quedan atómicos entre sí. Usamos notifyAll() y no notify() porque acá hay N robots dormidos sobre el mismo lock y todos tienen que 
+reanudar juntos, no uno solo al azar. Cuando despiertan, cada robot vuelve a pelear por el lock, revisa otra vez la condición del while y, como ya está en 
+false, sale del bucle y sigue tomando parcelas de la cola.`
 ---
 
 ## 9.3 Snapshot consistente
@@ -381,18 +384,21 @@ Explique cómo implementaron:
 Cuando la simulación está pausada, registre:
 
 ```text
-Processed parcels:
-Pending parcels:
-Registry size:
-Current leader:
+Initial parcels : 180
+Pending parcels : 59
+Processed count : 121
+Registry size   : 121
+Current leader  : Robot-07 / parcel 7 / position 1
+Simulation paused = true
 ```
 
-Explique cómo garantizan que esos valores representan un estado consistente.
-
 **Respuesta:**  
-`________________________________________________________________________`
+`El snapshot solo se toma después de que pause() activa la bandera y todos los robots quedan bloqueados en wait(). Cada robot solo revisa esa bandera 
+entre unidades de trabajo completas, nunca a mitad de takeNext(), register() o recordProcessed(), esas regiones ya son synchronized y corren de corrido. 
+Por eso, con todos dormidos, ninguna parcela queda "a medias": o sigue pendiente en la cola, o ya está contada y registrada por completo.`
 
-`________________________________________________________________________`
+`Cada valor del snapshot además se lee con su propio getter synchronized, así que no hay torn reads, y como nadie está escribiendo mientras todos están 
+pausados, no hace falta un lock global. Por eso pending + processed siempre suma el total de parcelas iniciales durante la pausa.`
 
 ---
 

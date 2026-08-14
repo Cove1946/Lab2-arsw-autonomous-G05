@@ -1,28 +1,39 @@
 package edu.eci.arsw.warehouse.core;
 
 /**
- * Intentionally unsafe counters. ++ and += are not atomic read-modify-write operations.
+ * Thread-safe processed-parcel counters.
+ *
+ * recordProcessed() updates processedParcels and totalProcessingMillis inside
+ * a single critical region guarded by a private lock, so both counters advance
+ * atomically together (I3: processed count must match the registry size).
  */
 public class WarehouseStatistics {
 
+    private final Object lock = new Object();
     private int processedParcels;
     private long totalProcessingMillis;
 
     public void recordProcessed(long elapsedMillis) {
-        int current = processedParcels;
-        Thread.yield();
-        processedParcels = current + 1;
+        synchronized (lock) {
+            int current = processedParcels;
+            Thread.yield();
+            processedParcels = current + 1;
 
-        long accumulated = totalProcessingMillis;
-        Thread.yield();
-        totalProcessingMillis = accumulated + elapsedMillis;
+            long accumulated = totalProcessingMillis;
+            Thread.yield();
+            totalProcessingMillis = accumulated + elapsedMillis;
+        }
     }
 
     public int processedParcels() {
-        return processedParcels;
+        synchronized (lock) {
+            return processedParcels;
+        }
     }
 
     public long totalProcessingMillis() {
-        return totalProcessingMillis;
+        synchronized (lock) {
+            return totalProcessingMillis;
+        }
     }
 }

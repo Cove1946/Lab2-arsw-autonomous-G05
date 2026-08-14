@@ -6,13 +6,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Intentionally unsafe starter implementation.
+ * Thread-safe package queue.
  *
- * Students: do not simply synchronize every public method without analysis.
- * First identify the invariant and the minimum critical region.
+ * takeNext() groups the check (isEmpty), the read (get(0)) and the removal
+ * (remove(0)) into a single critical region guarded by a private lock, so no
+ * other robot can observe or mutate `pending` between those steps (I1: each
+ * parcel is processed at most once).
  */
 public class PackageQueue {
 
+    private final Object lock = new Object();
     private final List<Parcel> pending = new ArrayList<>();
 
     public PackageQueue(List<Parcel> parcels) {
@@ -20,20 +23,22 @@ public class PackageQueue {
     }
 
     public Parcel takeNext() {
-        // Deliberate check-then-act race condition.
-        if (pending.isEmpty()) {
-            return null;
+        synchronized (lock) {
+            if (pending.isEmpty()) {
+                return null;
+            }
+
+            Parcel selected = pending.get(0);
+            Thread.yield();
+
+            pending.remove(0);
+            return selected;
         }
-
-        Parcel selected = pending.get(0);
-        Thread.yield();
-
-        // Another thread may have changed the list between get(0) and remove(0).
-        pending.remove(0);
-        return selected;
     }
 
     public int pendingCount() {
-        return pending.size();
+        synchronized (lock) {
+            return pending.size();
+        }
     }
 }

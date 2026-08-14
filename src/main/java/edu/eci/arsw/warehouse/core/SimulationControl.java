@@ -1,31 +1,46 @@
 package edu.eci.arsw.warehouse.core;
 
 /**
- * Starter pause/resume control.
+ * Pause/resume control based on monitor coordination (synchronized + wait()/notifyAll()).
  *
- * This version intentionally uses active waiting so students can replace it with
- * a monitor-based design using synchronized + wait()/notifyAll().
+ * Replaces the original busy-waiting implementation: paused robots block inside
+ * wait() instead of spinning, so they consume no CPU while paused and are woken
+ * up immediately (not on the next scheduler turn) when resume() is called.
  */
 public class SimulationControl {
 
-    private volatile boolean paused;
+    private final Object lock = new Object();
+    private boolean paused;
 
     public void pause() {
-        paused = true;
+        synchronized (lock) {
+            paused = true;
+        }
     }
 
     public void resume() {
-        paused = false;
+        synchronized (lock) {
+            paused = false;
+            lock.notifyAll();
+        }
     }
 
     public void awaitIfPaused() {
-        // TODO LAB 2: replace busy waiting with monitor coordination.
-        while (paused) {
-            Thread.onSpinWait();
+        synchronized (lock) {
+            while (paused) {
+                try {
+                    lock.wait();
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
         }
     }
 
     public boolean isPaused() {
-        return paused;
+        synchronized (lock) {
+            return paused;
+        }
     }
 }

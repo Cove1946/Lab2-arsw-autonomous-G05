@@ -570,11 +570,12 @@ Resuma los principales cambios de código.
 
 | Prueba | Comando | Resultado |
 |---|---|---|
-| Compilación y tests | `mvn clean test` | |
-| Simulación estándar | | |
-| RaceConditionProbe | | |
-| Pause / Resume | | |
-| Otra | | |
+| Compilación y tests | `mvn clean test` | `Tests run: 2, Failures: 0, Errors: 0, Skipped: 0` · `BUILD SUCCESS`. Los dos tests de `InvariantCheckerTest` (snapshot consistente aceptado / posiciones duplicadas rechazadas) pasan. |
+| Simulación estándar | `java -cp target/classes edu.eci.arsw.warehouse.app.WarehouseMain 12 100` | Un único `FINAL REPORT`, ya no se imprime el reporte prematuro: `Initial 100 / Pending 0 / Processed 100 / Registry 100`. |
+| RaceConditionProbe | `java -cp target/classes edu.eci.arsw.warehouse.verification.RaceConditionProbe 100 32 500` | `Anomalous runs: 0/100`. Cada corrida cierra con `pending=0, processedCounter=500, registry=500, uniqueParcels=500, uniquePositions=500, positionsContiguous=true`. |
+| RaceConditionProbe (cargas menores) | `... RaceConditionProbe 100 8 100` y `... RaceConditionProbe 100 16 250` | `Anomalous runs: 0/100` en ambas (detalle en la sección 10). |
+| Pause / Resume | `java -cp target/classes edu.eci.arsw.warehouse.app.PauseResumeDemo` | Snapshot durante la pausa: `Pending 56 + Processed 124 = 180` con `Registry 124`, es decir ninguna parcela queda a medias. Snapshot final tras `resume()`: `Initial 180 / Pending 0 / Processed 180 / Registry 180`. |
+| Línea base (código original, antes del fix) | `java -cp target/classes edu.eci.arsw.warehouse.verification.RaceConditionProbe 50 32 500` | 100% de corridas anómalas y `ArrayIndexOutOfBoundsException` matando hilos de robot (evidencia en la sección 3). Es la referencia contra la cual se compara el `0/100` posterior. |
 
 ---
 

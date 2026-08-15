@@ -468,10 +468,10 @@ Considere:
 
 | Atributo | Impacto de la solución | Evidencia / métrica |
 |---|---|---|
-| Correctitud / Reliability | | |
-| Performance / Throughput | | |
-| Maintainability | | |
-| Scalability | | |
+| Correctitud / Reliability |Se eliminaron las 3 race conditions documentadas; el sistema ahora es determinista frente al invariante de negocio (nunca depende del scheduling para dar un resultado correcto). |300 corridas (100×3 cargas) con 0/100 anomalías, vs. 100% de fallas antes del fix (incluyendo el crash de ArrayIndexOutOfBoundsException). |
+| Performance / Throughput |El impacto en el rendimiento fue muy bajo porque los bloqueos no eran globales, sino por objeto. Además, las secciones críticas eran muy pequeñas y dentro de ellas no se hacían operaciones como I/O ni sleep(). Por eso, la única espera ocurría cuando dos robots intentaban ejecutar takeNext() o register() exactamente al mismo tiempo |Se puede evidenciar comparando el tiempo total de WarehouseMain con distinto número de robots antes/después (opcional: correr time java -cp target/classes ... WarehouseMain 32 500 y reportar el wall-clock). |
+| Maintainability |Cada clase tiene su propio lock, por lo que no fue necesario cambiar el código de WarehouseRobot. La sincronización quedó implementada dentro de cada clase y es transparente para quien la utiliza | |
+| Scalability |La solución escala razonablemente con más robots porque no hay un único lock global — cada clase tiene su propio monitor y solo compiten entre sí los robots que tocan esa clase en ese instante. |Las 3 cargas probadas (8, 16, 32 robots) mantienen 0 anomalías sin degradación observable. |
 
 ---
 
@@ -481,9 +481,12 @@ Considere:
 
 **Respuesta:**
 
-`________________________________________________________________________`
-
-`________________________________________________________________________`
+`Con esta solución logramos que el programa funcionara correctamente en todas las pruebas, sin presentar anomalías. A 
+cambio, tuvimos que agregar sincronización, lo que hace que en algunos momentos los robots tengan que esperar un poco 
+cuando intentan acceder al mismo recurso al mismo tiempo. Sin embargo, ese impacto es muy pequeño porque las secciones 
+críticas son cortas y cada clase maneja su propio lock, en lugar de usar uno global. De hecho, la versión insegura 
+parecía más rápida solo porque no estaba haciendo todo el trabajo correctamente: perdía paquetes y registraba 
+información incorrecta, mientras que la versión sincronizada procesaba todo de forma correcta`
 
 ---
 
@@ -506,13 +509,16 @@ Suponga ahora que existen tres instancias de la aplicación:
 ¿Los bloques `synchronized` utilizados dentro de una JVM garantizan consistencia entre `App A`, `App B` y `App C`?
 
 - [ ] Sí
-- [ ] No
+- [X] No
 
 **Justificación:**
 
-`________________________________________________________________________`
-
-`________________________________________________________________________`
+`No. Aunque usemos synchronized, esa sincronización solo funciona dentro de una misma JVM. Si tenemos tres aplicaciones 
+diferentes, cada una tiene su propia JVM, su propia memoria y sus propios objetos, así que los lock de una no afectan a 
+las otras. Eso significa que dos aplicaciones podrían hacer la misma operación al mismo tiempo sin saber que la otra 
+también la está haciendo. Por ejemplo, ambas podrían asignar la posición 1 a paquetes distintos. Cada aplicación estaría
+funcionando correctamente por separado, pero a nivel del sistema completo se estaría incumpliendo la regla de que las 
+posiciones deben ser únicas.`
 
 ---
 
@@ -520,19 +526,23 @@ Suponga ahora que existen tres instancias de la aplicación:
 
 ¿Qué alternativa consideraría para garantizar consistencia entre múltiples instancias?
 
-- [ ] Transacción en base de datos
-- [ ] Restricción / constraint en base de datos
+- [X] Transacción en base de datos
+- [X] Restricción / constraint en base de datos
 - [ ] Optimistic locking / versionado
 - [ ] Lock distribuido
 - [ ] Otra: `________________________`
 
 **Decisión propuesta:**
 
-`________________________________________________________________________`
+`Mover nextPosition/deliveries y los contadores a una base de datos compartida entre las 3 instancias, usando una 
+columna position con constraint UNIQUE/autoincremental gestionado por la BD, dentro de una transacción por cada 
+register(). Si dos instancias intentan asignar la misma posición, la BD rechaza una de las dos transacciones 
+(violación de constraint) y esa instancia reintenta`
 
 **Justificación:**
 
-`________________________________________________________________________`
+`Los `synchronized` de Java solo sirven para coordinar hilos que están dentro del mismo proceso, por lo que no funcionan para controlar procesos diferentes. Para eso se necesita algo externo que sea compartido entre todos los procesos. En este caso, como ya tenemos una base de datos, podemos usar sus transacciones ACID y sus restricciones para garantizar que los datos se manejen de forma segura y consistente. Así no tenemos que implementar mecanismos adicionales de coordinación y aprovechamos las garantías que ya ofrece la base de datos.
+`
 
 ---
 

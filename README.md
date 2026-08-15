@@ -131,10 +131,10 @@ Complete the following table in your report:
 
 | Shared object | Mutable state | Readers | Writers | Possible invariant |
 |---|---|---|---|---|
-| `PackageQueue` |pending: List<Parcel> (ArrayList)  | takeNext() (lee get(0)), pendingCount() |takeNext() (remove(0)), constructor  | Cada parcela se retira exactamente una vez; pending.size() + deliveries.size() == initialParcels |
-| `DeliveryRegistry` | nextPosition: int, deliveries: List<DeliveryRecord> (ArrayList) | snapshot() | register() |Posiciones únicas y contiguas 1..N; deliveries.size() == processedParcels  |
-| `WarehouseStatistics` | processedParcels: int, totalProcessingMillis: long | processedParcels(), totalProcessingMillis() | recordProcessed() |processedParcels == deliveries.size(), y nunca puede superar initialParcels  |
-| `SimulationControl` |paused: boolean (volatile)  | awaitIfPaused(), isPaused() | recordProcessed() | Ningún robot debe estar mutando estado mientras paused == true (aquí no hay data race por ser volatile, pero sí busy-waiting) |
+| `PackageQueue` |  |  |  |  |
+| `DeliveryRegistry` |  |  |  |  |
+| `WarehouseStatistics` |  |  |  |  |
+| `SimulationControl` |  |  |  |  |
 
 ## 2. Evidence of incorrect behavior
 
@@ -151,38 +151,19 @@ For each anomaly include:
 ### Evidence 1
 
 ```text
-<Comando: RaceConditionProbe 50 32 500
-Corrida: 01
-Salida: pending=0, processedCounter=484, registry=490, uniqueParcels=457, uniquePositions=452, positionsContiguous=false
-Explicación: con 500 parcelas iniciales y pending=0, el registro debería tener 500 entregas; solo tiene 490 → 10 
-parcelas se perdieron sin ser jamás registradas. Además uniqueParcels(457) < registry(490) → 33 IDs de parcela quedaron 
-duplicados. Es la firma exacta del check-then-act de takeNext().>
+<your evidence>
 ```
 
 ### Evidence 2
 
 ```text
-<Comando: mismo probe, corrida 35
-Salida:
-Exception in thread "warehouse-robot-11" java.lang.ArrayIndexOutOfBoundsException: Index 50 out of bounds for length 49
-        at java.base/java.util.ArrayList.add(ArrayList.java:484)
-        at edu.eci.arsw.warehouse.core.DeliveryRegistry.register(DeliveryRegistry.java:20)
-        at edu.eci.arsw.warehouse.worker.WarehouseRobot.run(WarehouseRobot.java:56)
-
-Explicación: ArrayList no es thread-safe; dos add()/remove() concurrentes sin sincronización corrompen su estado interno
- (size/elementData) y lanzan ArrayIndexOutOfBoundsException. La de register() no está atrapada en ningún try/catch → 
- mata el hilo del robot completo, que deja de trabajar en silencio. Es más grave que un simple desajuste numérico: es 
- pérdida de throughput invisible si nadie revisa stderr.>
+<your evidence>
 ```
 
 ### Evidence 3
 
 ```text
-<Comando: mismo probe, corrida 44
-Salida: pending=0, processedCounter=501, registry=506, uniqueParcels=486, uniquePositions=492, positionsContiguous=false
-Explicación: con solo 500 parcelas creadas, processedCounter=501 y registry=506 superan el total físico de parcelas que 
-existieron. Prueba que el patrón no atómico current = processedParcels; yield(); processedParcels = current+1 produce 
-incrementos duplicados (la misma parcela, entregada dos veces por la carrera de PackageQueue, incrementa el contador dos veces). 
+<your evidence>
 ```
 
 ## 3. Interleaving analysis
@@ -191,14 +172,13 @@ Choose one race condition and describe a possible interleaving.
 
 Example format:
 
-| Step | Thread A | Thread B | Shared state: (pending )   |
-|---:|--------|----------|----------------------------|
-| 1 | Mira la fila y ve que la primera caja es la Caja 1 (pending.isEmpty() → false)      | -        | [Caja1, Caja2, Caja3, ...] |
-| 2 |        |   Mira la fila y también ve que la primera es la Caja 1  (pending.isEmpty() → false)    | [Caja1, Caja2, Caja3, ...] |
-| 3 |    Decide "me llevo la Caja 1", pero aún no la retira (selected = pending.get(0) → Caja1)    |          | [Caja1, Caja2, Caja3, ...] |
-| 4 |        |   Decide "me llevo la Caja 1", pero aún no la retira (selected = pending.get(0) → Caja1)       | [Caja1, Caja2, Caja3, ...] |
-|5|Se distrae un instante y cede su turno (Thread.yield()) | | [Caja1, Caja2, Caja3, ...] |
-|6||Quita la primera caja de la fila → se lleva la Caja 1 real (pending.remove(0))| [Caja2, Caja3, ...]        |
+| Step | Thread A | Thread B | Shared state |
+|---:|---|---|---|
+| 1 |  |  |  |
+| 2 |  |  |  |
+| 3 |  |  |  |
+| 4 |  |  |  |
+
 Answer:
 
 **Why is the final result dependent on scheduling?**

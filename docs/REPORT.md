@@ -583,11 +583,11 @@ Resuma los principales cambios de código.
 
 Incluya entre **3 y 5 conclusiones concretas**.
 
-1. `______________________________________________________________________`
-2. `______________________________________________________________________`
-3. `______________________________________________________________________`
-4. `______________________________________________________________________`
-5. `______________________________________________________________________`
+1. `La concurrencia no era el problema: el problema era el estado mutable compartido sin delimitar. Las tres anomalías documentadas vienen de operaciones compuestas —check-then-act en takeNext(), read-modify-write en recordProcessed() e inserción en un ArrayList que no es thread-safe— tratadas como si fueran atómicas cuando no lo son.`
+2. `Sincronizar bien no es sincronizar más, sino proteger la operación lógica completa y dejar el trabajo lento afuera. process() hace Thread.sleep() de varios milisegundos y corre sin ningún candado, mientras que las regiones críticas duran nanosegundos: por eso la solución sigue siendo concurrente y el costo de los locks es marginal frente al tiempo de procesamiento.`
+3. `Una ejecución correcta no demuestra nada; solo lo hace la repetición sistemática. Las 300 corridas en tres cargas distintas pasaron de 100% de anomalías a 0/100, y ese contraste —no una corrida afortunada— es lo que permite afirmar que el defecto era real y quedó cerrado.`
+4. `Terminar bien es parte de la correctitud. join() no solo ordena la ejecución: establece el happens-before que hace visibles las escrituras de los robots al hilo coordinador. Thread.sleep() no da ninguna de las dos garantías, y por eso el reporte inicial mostraba un estado que nunca existió (Pending 64 / Processed 24).`
+5. `Las garantías de synchronized terminan en el borde de la JVM. En cuanto el sistema se replica en varias instancias detrás de un balanceador, el invariante de negocio deja de estar protegido por el lenguaje y hay que moverlo a un mecanismo compartido —transacciones y constraints en la base de datos—, como se analizó en la sección 14.`
 
 ---
 

@@ -359,8 +359,8 @@ cambió, desperdiciando CPU en un loop que no hace trabajo útil. Con N robots p
 compitiendo por núcleos sin avanzar, degradando el rendimiento del resto del sistema, incluido el hilo que debe llamar
 resume(), que también compite por CPU contra los spinners y puede verse retrasado. A más robots pausados, peor escala
 el problema. Además, el hilo detecta el cambio de estado solo cuando el sistema operativo vuelve a asignarle tiempo de
-procesador para revisar la bandera de nuevo; no hay ninguna notificación directa que le avise al instante.
-`
+procesador para revisar la bandera de nuevo; no hay ninguna notificación directa que le avise al instante.`
+
 ---
 
 ## 9.2 Solución implementada
@@ -414,9 +414,9 @@ java -cp target/classes edu.eci.arsw.warehouse.verification.RaceConditionProbe 1
 
 | Robots | Paquetes | Runs | Anomalías antes | Anomalías después |
 |---:|---:|---:|---:|---:|
-| 8 | 100 | | | |
-| 16 | 250 | | | |
-| 32 | 500 | | | |
+| 8 | 100 | 100 | 100/100 | 0/100 |
+| 16 | 250 | 100 | 100/100 | 0/100 |
+| 32 | 500 | 100 | 100/100 | 0/100 |
 
 ### Resultado final esperado
 
@@ -427,7 +427,15 @@ Anomalous runs: 0/100
 **Salida obtenida:**
 
 ```text
-PEGAR_AQUÍ_LA_SALIDA
+Run 95 -> OK           | pending=0, processedCounter=500, registry=500, uniqueParcels=500, uniquePositions=500, positionsContiguous=true
+Run 96 -> OK           | pending=0, processedCounter=500, registry=500, uniqueParcels=500, uniquePositions=500, positionsContiguous=true
+Run 97 -> OK           | pending=0, processedCounter=500, registry=500, uniqueParcels=500, uniquePositions=500, positionsContiguous=true
+Run 98 -> OK           | pending=0, processedCounter=500, registry=500, uniqueParcels=500, uniquePositions=500, positionsContiguous=true
+Run 99 -> OK           | pending=0, processedCounter=500, registry=500, uniqueParcels=500, uniquePositions=500, positionsContiguous=true
+Run 100 -> OK           | pending=0, processedCounter=500, registry=500, uniqueParcels=500, uniquePositions=500, positionsContiguous=true
+
+Anomalous runs: 0/100
+The starter is expected to be unsafe. Your final solution should converge to 0 anomalies.
 ```
 
 ---

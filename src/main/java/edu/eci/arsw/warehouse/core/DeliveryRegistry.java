@@ -6,20 +6,30 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Intentionally unsafe shared registry.
+ * Thread-safe delivery registry.
+ *
+ * register() groups the read of nextPosition, its increment and the insertion
+ * into `deliveries` inside a single critical region guarded by a private lock
+ * (I2: arrival positions are unique). snapshot() uses the same lock so it never
+ * observes a torn read while a robot is mid-registration.
  */
 public class DeliveryRegistry {
 
+    private final Object lock = new Object();
     private int nextPosition = 1;
     private final List<DeliveryRecord> deliveries = new ArrayList<>();
 
-    public synchronized void register(int robotId, int parcelId, long elapsedMillis) {
-        int assignedPosition = nextPosition;
-        nextPosition = nextPosition + 1;
-        deliveries.add(new DeliveryRecord(assignedPosition, robotId, parcelId, elapsedMillis));
+    public void register(int robotId, int parcelId, long elapsedMillis) {
+        synchronized (lock) {
+            int assignedPosition = nextPosition;
+            nextPosition = nextPosition + 1;
+            deliveries.add(new DeliveryRecord(assignedPosition, robotId, parcelId, elapsedMillis));
+        }
     }
 
-    public synchronized List<DeliveryRecord> snapshot() {
-        return List.copyOf(deliveries);
+    public List<DeliveryRecord> snapshot() {
+        synchronized (lock) {
+            return List.copyOf(deliveries);
+        }
     }
 }

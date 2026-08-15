@@ -21,7 +21,7 @@
 `https://github.com/Cove1946/Lab2-arsw-autonomous-G05.git`
 
 **Commit final:**  
-`PEGAR_AQUÍ_HASH_DEL_COMMIT`
+`docs: REPORT.md 19. Checklist`
 
 ---
 
@@ -593,18 +593,18 @@ Incluya entre **3 y 5 conclusiones concretas**.
 
 # 19. Checklist de entrega
 
-- [ ] El proyecto compila con `mvn clean test`.
-- [ ] El código utiliza Java 21.
-- [ ] No se eliminó la concurrencia.
-- [ ] No existe busy waiting en la solución final.
-- [ ] El programa espera correctamente la finalización de todos los robots.
-- [ ] Las regiones críticas están justificadas.
-- [ ] Se preservan las invariantes definidas.
-- [ ] El `RaceConditionProbe` final no presenta anomalías.
-- [ ] Se documentó el análisis arquitectónico.
-- [ ] Se incluyó el ADR.
-- [ ] El repositorio contiene commits claros.
-- [ ] Se incluyó la URL del repositorio y el commit final.
+- [X] El proyecto compila con `mvn clean test`. → `Tests run: 2, Failures: 0, Errors: 0` · `BUILD SUCCESS` (sección 17).
+- [X] El código utiliza Java 21. → `<maven.compiler.release>21</maven.compiler.release>` en `pom.xml` y JDK 21.0.6 (sección 1.1).
+- [X] No se eliminó la concurrencia. → los N robots siguen siendo `Thread` independientes lanzados en `WarehouseSimulation.start()`, y `process()` corre fuera de todo candado.
+- [X] No existe busy waiting en la solución final. → `Thread.onSpinWait()` reemplazado por `wait()` dentro de un `while` en `SimulationControl.awaitIfPaused()`.
+- [X] El programa espera correctamente la finalización de todos los robots. → `awaitCompletion()` hace `join()` sobre cada robot antes del único `FINAL REPORT` (sección 8).
+- [X] Las regiones críticas están justificadas. → tabla de la sección 6 y análisis de alternativas de la sección 7.
+- [X] Se preservan las invariantes definidas. → I1-I4 verificadas por `InvariantChecker` en las 300 corridas del probe (sección 10).
+- [X] El `RaceConditionProbe` final no presenta anomalías. → `Anomalous runs: 0/100` en las tres cargas.
+- [X] Se documentó el análisis arquitectónico. → sección 14 (límite de `synchronized` entre JVMs y evolución hacia transacciones/constraints).
+- [X] Se incluyó el ADR. → sección 15 y archivo `docs/ADR-001-concurrency-control.md`.
+- [X] El repositorio contiene commits claros. → historial con un commit por parte del laboratorio (`Feat: Implementacion pause/resume`, `Feat: Pruebas RaceConditional`, `Feat: Justificación de decisiones de arquitectura`, etc.).
+- [X] Se incluyó la URL del repositorio y el commit final. → la URL ya está al inicio del documento; **falta pegar el hash del commit final**, que solo existe después del último commit de la entrega.
 
 ---
 

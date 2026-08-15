@@ -558,10 +558,11 @@ Resuma los principales cambios de código.
 
 | Archivo / Clase | Cambio realizado | Razón |
 |---|---|---|
-| | | |
-| | | |
-| | | |
-| | | |
+| `app/WarehouseMain.java` | Se eliminó `Thread.sleep(60)` y el bloque "STARTER REPORT (intentionally premature)"; ahora se llama `simulation.awaitCompletion()` y se imprime un único `FINAL REPORT`. | El reporte se imprimía antes de que los robots terminaran. `join()` garantiza la terminación y además establece el happens-before que hace visibles las escrituras de los workers. |
+| `core/PackageQueue.java` | Se añadió un `lock` privado; el cuerpo completo de `takeNext()` (`isEmpty()` + `get(0)` + `remove(0)`) y `pendingCount()` quedaron dentro de `synchronized(lock)`. | Eliminar el check-then-act que permitía a dos robots llevarse la misma parcela (I1) y dar al snapshot una lectura consistente de los pendientes. |
+| `core/DeliveryRegistry.java` | Se añadió un `lock` privado; `register()` agrupa la lectura de `nextPosition`, su incremento y `deliveries.add()` en una sola región crítica, y `snapshot()` usa el mismo lock. | Garantizar posiciones de llegada únicas y contiguas (I2) y evitar la corrupción del `ArrayList` que provocaba `ArrayIndexOutOfBoundsException` y mataba hilos de robot. |
+| `core/WarehouseStatistics.java` | Se añadió un `lock` privado; `recordProcessed()` actualiza `processedParcels` y `totalProcessingMillis` en una sola región crítica, y ambos getters usan ese mismo lock. | Hacer atómico el read-modify-write (I3), mantener coherentes los dos contadores entre sí y garantizar la visibilidad de sus valores para el hilo coordinador. |
+| `core/SimulationControl.java` | Se reemplazó `volatile boolean` + `Thread.onSpinWait()` por un monitor: `lock` privado, `wait()` dentro de un `while` en `awaitIfPaused()`, `notifyAll()` en `resume()`; `pause()` e `isPaused()` también sincronizados. | Eliminar el busy waiting (los robots pausados ya no consumen CPU) y hacer que el cambio de bandera y la notificación ocurran atómicamente, evitando despertares perdidos. |
 
 ---
 

@@ -456,11 +456,11 @@ Considere:
 
 **Conclusión:**
 
-`________________________________________________________________________`
+`Sabemos que la solución es correcta porque no nos quedamos con una sola ejecución exitosa: corrimos el simulador 100 veces seguidas en tres cargas distintas (8/100, 16/250 y 32/500 robots/paquetes) y en las 300 corridas el reporte final cumplió las invariantes definidas, cada paquete aparece una sola vez, ninguna posición de llegada se repite, no falta ningún paquete y el contador de procesados coincide con el registro de entregas.`
 
-`________________________________________________________________________`
+`Antes del fix, con la misma cantidad de corridas, el 100% fallaba (e incluso el programa llegó a caerse por la carrera en DeliveryRegistry), lo que confirma que el problema no era casualidad sino un bug real de concurrencia. Después del fix eso desapareció por completo, sin importar si había pocos o muchos robots compitiendo.`
 
-`________________________________________________________________________`
+`También verificamos que la simulación termina de forma correcta (el reporte final solo se imprime una vez, cuando todos los robots ya acabaron) y que al pausar, la foto del estado (paquetes pendientes, procesados, registro) queda consistente porque se toma protegida por el mismo lock que usan los robots para modificar esos datos, nadie puede estar escribiendo a mitad de la pausa.`
 
 ---
 
